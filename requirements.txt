@@ -1,0 +1,2 @@
+picamera2[gui]==0.3.12
+numpy==1.26.1

@@ -1,0 +1,6 @@
+.vscode
+.gitignore
+venv
+env
+.pytest_cache
+.coverage
