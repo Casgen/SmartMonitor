@@ -1,21 +1,36 @@
 #!/usr/bin/python3
 import time
+import cv2
 
 from picamera2 import Picamera2
-from picamera2.encoders import H264Encoder
-from picamera2.outputs import FfmpegOutput
+from libcamera import Transform
+from cv2.typing import MatLike, Size
 
 
-def setup():
-    print("camera Setup!")
+class Camera:
+    picam2: Picamera2
+    hog_detector: cv2.HOGDescriptor
 
-    picam2 = Picamera2()
-    video_config = picam2.create_video_configuration()
-    picam2.configure(video_config)
+    def setup(self):
+        print("Setting up the camera and detection")
+        self.hog_detector = cv2.HOGDescriptor()
 
-    encoder = H264Encoder(10000000)
-    output = FfmpegOutput("test.mp4", audio=True)
+        self.hog_detector.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+        cv2.startWindowThread()
 
-    picam2.start_recording(encoder, output)
-    time.sleep(10)
-    picam2.stop_recording()
+        self.picam2 = Picamera2()
+        self.configuration = self.picam2.create_preview_configuration(
+            transform=Transform(vflip=1),
+            main={"format": "XRGB8888", "size": (640, 480)},
+        )
+
+        self.picam2.configure(self.configuration)
+
+    def capture_array(self) -> MatLike:
+        return self.picam2.capture_array()
+
+    def detect_multiscale(self, img: MatLike, hit_threshold: float=3, win_stride: Size=(2,2), scale: float=1.1):
+        return self.hog_detector.detectMultiScale(img, winStride=win_stride, scale=scale, hitThreshold=hit_threshold)
+
+    def start(self):
+        self.picam2.start()

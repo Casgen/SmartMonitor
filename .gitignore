@@ -4,3 +4,6 @@ venv
 env
 .pytest_cache
 .coverage
+*.json
+call_rsync.sh
+**/__pycache__
