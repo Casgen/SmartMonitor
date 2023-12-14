@@ -1,18 +1,26 @@
+from datetime import datetime
 import firebase_admin
 import requests
 import json
 
 from requests.exceptions import HTTPError
+from pathlib import Path
 from google.cloud.firestore import FieldFilter
 from smartmonitor.model.user import User
-from firebase_admin import credentials
-from firebase_admin import firestore
-from firebase_admin import auth
+from firebase_admin import credentials, firestore, auth, storage, messaging
 
 
 class FirestoreClient:
+
+    
     def __init__(self) -> None:
         creds = credentials.Certificate("./service_account_cred.json")
+
+        token_file = open("token-virtual.json", "r")
+
+        data = json.load(token_file)
+
+        self.token = data['token']
 
         self.api_key = "AIzaSyCkH2RuaOcCxP8Xt-z6RQofCS6Qal5KvnI"
 
@@ -25,11 +33,12 @@ class FirestoreClient:
         self._app = firebase_admin.initialize_app(
             (creds),
             {
-                "storageBucket": "gs://smartsurveillance-37001.appspot.com",
+                "storageBucket": "smartsurveillance-37001.appspot.com",
             },
         )
 
         self._db = firestore.client()
+        self.bucket = storage.bucket()
 
     def get_user(self, user_id: str) -> User:
         """
@@ -96,3 +105,19 @@ class FirestoreClient:
             request_object.raise_for_status()
         except HTTPError as e:
             raise HTTPError(e, response=request_object.text)
+
+    def upload_image(self, path: Path):
+        blob = self.bucket.blob(datetime.now().strftime('%d-%m-%y_%H-%M-%S-%f'))
+
+        blob.upload_from_filename(path.as_posix())
+
+        print(f"File {path.as_posix()} uploaded to {blob}.")
+
+    def send_notification(self):
+        message = messaging.Message(
+            token=self.token,
+            notification= messaging.Notification("Person Detected!","Somebody is running in your property!")
+        )
+
+        response = messaging.send(message)
+        print(response)
